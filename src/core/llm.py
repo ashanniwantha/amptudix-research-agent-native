@@ -1,5 +1,6 @@
 import os
-from typing import Any, cast, List
+from collections.abc import Sequence
+from typing import cast, List
 import json
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -11,14 +12,33 @@ from openai.types.chat import (
 )
 from src.core.tools_registry import get_tools_definition
 from src.tools.web_reader import fetch_web_content
-from src.tools.search_engine import search_web
+from src.tools.search_engine import SearchResult, search_web
 from rich.console import Console
 from rich.panel import Panel
 from rich.live import Live
 from rich.status import Status
+from rich.markdown import Markdown
 
 load_dotenv()
 console = Console()
+
+
+def _format_search_results_for_llm(results: Sequence[SearchResult]) -> str:
+    if not results:
+        return "No web results found."
+
+    lines: list[str] = []
+    for item in results:
+        lines.append(
+            (
+                f"SOURCE [{item.get('source', '?')}]\n"
+                f"Title: {item.get('title', '')}\n"
+                f"URL: {item.get('url', '')}\n"
+                f"Snippet: {item.get('snippet', '')}\n"
+                "---"
+            )
+        )
+    return "\n".join(lines)
 
 
 class Brain:
@@ -77,6 +97,7 @@ class Brain:
         2. Verified Citations: Every claim must be followed by a [Source Number] from the search results.
         3. Analysis: Clearly separate critical acclaim (from professional reviewers) from public sentiment (social media/fans).
         4. Sources: At the very end, provide a 'Bibliography' section. Each entry MUST follow this format: [n] Title - URL
+        5. Formatting: In the Bibliography, ensure every source starts on a completely new line.
         """
         console.print(
             Panel.fit(
@@ -113,17 +134,27 @@ class Brain:
             tool_calls = response_message.tool_calls
 
             if not tool_calls:
+                final_content = ""
                 if response_message.content:
-                    print(response_message.content)
-                    return response_message.content
+                    final_content = response_message.content
 
-                return self.stream_response(messages=messages)
+                else:
+                    final_content = self.stream_response(messages=messages)
+
+                console.print(
+                    Panel(
+                        Markdown(final_content),
+                        title="[bold green]Final Research Report[/bold green]\n",
+                        expand=False,
+                    )
+                )
+                return final_content
 
             messages.append(
                 cast(ChatCompletionMessageParam, response_message.model_dump())
             )
 
-            with console.status("[bold green]Thinking...[/bold green]") as status:
+            with console.status("[bold green]Thinking...[/bold green]\n") as status:
                 for tool_call in tool_calls:
                     if tool_call.type == "function":
                         t_name = tool_call.function.name
@@ -138,7 +169,8 @@ class Brain:
                                 status.update(
                                     f"[bold yellow]Searching Web:[/bold yellow] {args.get('query')}"
                                 )
-                                result = search_web(args.get("query", ""))
+                                raw_result = search_web(args.get("query", ""))
+                                result = _format_search_results_for_llm(raw_result)
 
                             elif t_name == "fetch_web_content":
                                 status.update(
@@ -164,11 +196,18 @@ class Brain:
                             }
                         )
         print("DEBUG: Max Iterations Reached. Summarizing findings....")
-        return self.stream_response(messages=messages)
+        final_summery = self.stream_response(messages=messages)
+        console.print(
+            Panel(
+                Markdown(final_summery),
+                title="[bold yellow]Maximum iteration reached - Summart[/bold yellow]\n",
+            )
+        )
+        return final_summery
 
 
 if __name__ == "__main__":
     agent = Brain()
     agent.researcher(
-        "What was the latest Rosalia album and how was the public preception towards it?"
+        "Do a research and come back with a long comprehensive report on best modern architecture used for buidling thinking llm models. Compare it with Transformer architecture as well"
     )
