@@ -1,10 +1,23 @@
-# Python-generated files
+# .gitignore
+
+# Environment variables (CRITICAL)
+.env
+.env.local
+.env.*
+
+# Python-generated
 __pycache__/
-*.py[oc]
-build/
-dist/
-wheels/
-*.egg-info
+*.py[cod]
+*$py.class
+*.so
+.python-version
 
 # Virtual environments
-.venv
+.venv/
+venv/
+ENV/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
