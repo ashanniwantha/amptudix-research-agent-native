@@ -5,7 +5,7 @@ from rich.console import Console
 console = Console()
 
 
-def fetch_web_content(url: str) -> str:
+def fetch_web_content(url: str, timeout: float = 15.0) -> str:
     """
     This functions takes url as a parameter.
     Then takes that url to fetch content belongs to it.
@@ -22,7 +22,7 @@ def fetch_web_content(url: str) -> str:
 
     try:
         response = httpx.get(
-            url=url, headers=headers, timeout=10.0, follow_redirects=True
+            url=url, headers=headers, timeout=timeout, follow_redirects=True
         )
         response.raise_for_status()
 

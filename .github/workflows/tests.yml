@@ -1,0 +1,34 @@
+name: Samurai Test Suite
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    # Professionals set env vars here to prevent crashes during init
+    env:
+      MODEL_NAME: "llama3.2"
+      OLLAMA_BASE_URL: "http://localhost:11434/v1"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install Dependencies
+        # 'uv sync' is faster and more deterministic for CI
+        run: uv sync --all-extras --dev
+
+      - name: Run Tests
+        # We use -m "not needs_llm" to run logic tests 
+        # without failing on connection errors
+        run: uv run pytest -m "not needs_llm"

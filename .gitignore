@@ -11,6 +11,8 @@ __pycache__/
 *$py.class
 *.so
 .python-version
+*.pyc
+.pytest_cache/
 
 # Virtual environments
 .venv/
@@ -21,3 +23,7 @@ ENV/
 dist/
 build/
 *.egg-info/
+
+# Data
+data/vault_db/
+data/test_vault_db/
